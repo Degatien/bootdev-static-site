@@ -6,6 +6,8 @@ from textnode import (
     text_type_bold,
     text_type_italic,
     text_type_code,
+    text_type_image,
+    text_type_link
 )
 
 
@@ -36,3 +38,48 @@ def extract_markdown_images(text):
 
 def extract_markdown_links(text):
     return re.findall(r"(?<!!)\[(.*?)\]\((.*?)\)", text)
+
+def split_nodes_image(old_nodes: list[TextNode]):
+    new_nodes = []
+
+    for node in old_nodes:
+        original_text = node.text
+        extracted_images = extract_markdown_images(original_text)
+
+        if len(extracted_images) == 0:
+            new_nodes.append(node)
+            continue
+
+        for (image_alt, image_link) in extracted_images:
+            sections = original_text.split(f"![{image_alt}]({image_link})", 1)
+            if len(sections[0]) > 0:
+                new_nodes.append(TextNode(sections[0], text_type_text))
+            new_nodes.append(TextNode(image_alt, text_type_image, image_link))
+            original_text = sections[1]
+        if len(original_text) > 0:
+            new_nodes.append(TextNode(original_text, text_type_text))
+
+    return new_nodes
+        
+def split_nodes_link(old_nodes):
+    new_nodes = []
+
+    for node in old_nodes:
+        original_text = node.text
+        extracted_links = extract_markdown_links(original_text)
+
+        if len(extracted_links) == 0:
+            new_nodes.append(node)
+            continue
+
+        for (text, url) in extracted_links:
+            sections = original_text.split(f"[{text}]({url})", 1)
+            if len(sections[0]) > 0:
+                new_nodes.append(TextNode(sections[0], text_type_text))
+            new_nodes.append(TextNode(text, text_type_link, url))
+            original_text = sections[1]
+        if len(original_text) > 0:
+            new_nodes.append(TextNode(original_text, text_type_text))
+
+    return new_nodes
+    
